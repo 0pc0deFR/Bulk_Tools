@@ -5,5 +5,5 @@ from lib_wordpress_auditor import *
 print "\nWordpress Auditor"
 print "Kevin Falcoz (aka 0pc0deFR)"
 print "License GPL"
-print "V2.0"
+print "V2.1"
 main()

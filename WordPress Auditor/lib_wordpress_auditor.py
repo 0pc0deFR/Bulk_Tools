@@ -25,12 +25,12 @@ def load_php(plugin):
 		return 0
 
 def auditing(content_file):
-	strings_sqli = ["$wpdb->prepare","$wpdb->get_results","$wpdb->query"]
+	strings_sqli = ["$wpdb->get_results","$wpdb->query"]
 	strings_csrf = ["wp_create_nonce", "wp_verify_nonce"]
-	i = sql = csrf = 0
+	i = sqli = csrf = 0
 	while i < len(strings_sqli):
-		if content_file.find(strings_sqli[i]) != -1:
-			sql = 1
+		if content_file.find(strings_sqli[i]) != -1 and content_file.find("$wpdb->prepare") == -1:
+			sqli = 1
 		i += 1
 
 	if content_file.find("<form") != -1:
@@ -41,7 +41,7 @@ def auditing(content_file):
 				csrf = 0
 			i += 1
 
-	if sql == 1:
+	if sqli == 1:
 		print "Your plugin is potentially vulnerable to SQL Injection. For more informations: http://en.wikipedia.org/wiki/SQL_injection"
 	if csrf == 1:
 		print "Your plugin is potentially vulnerable to CSRF. For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery"

@@ -37,7 +37,7 @@ def auditing(content_file):
 		i = 0
 		csrf = 1
 		while i < len(strings_csrf):
-			if content_file.find(strings_csrf[i]) == 1:
+			if content_file.find(strings_csrf[i]) != -1:
 				csrf = 0
 			i += 1
 

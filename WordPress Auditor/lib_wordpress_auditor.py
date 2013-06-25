@@ -35,12 +35,12 @@ def load_php(plugin):
 
 def csrf(content_file):
 	strings_csrf = ["wp_create_nonce", "wp_verify_nonce"]
-	start = end = 0
+	start = end = i = 0
+	csrf = None
 	while True:
 		start = content_file.find("<form", end)
 		end = content_file.find("</form>", start)
 		if start != -1 and end != -1:
-			i = 0
 			csrf = 1
 			while i < len(strings_csrf):
 				if content_file.find(strings_csrf[i], start, end) != -1:

@@ -1,9 +1,7 @@
-#Ce script recherche les requetes SQL dans le but de detecter les SQLi et eventuellement XSS Stored
-
 from lib_wordpress_auditor import *
 
-print "\nWordpress Auditor"
+print "\nWordpress Auditor V2.2"
 print "Kevin Falcoz (aka 0pc0deFR)"
+print "Twitter: @0pc0deFR - Mail: 0pc0deFR@gmail.com"
 print "License GPL"
-print "V2.1"
 main()

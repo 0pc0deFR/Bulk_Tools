@@ -1,20 +1,39 @@
 #!/usr/bin/python
 import sys
-import os.path
+import os
+import zipfile
+import hashlib
+import shutil
+
+tmp_dir = "/tmp/"
 
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
 		print sys.argv[0] + " file.php"
 		print sys.argv[0] + " pluginDir"
+		print sys.argv[0] + " archive.zip"
 		sys.exit()
 	plugin = sys.argv[1]
-	load_plugin(plugin)
-		
+	if zipfile.is_zipfile(plugin):
+		load_archive(plugin)
+	else:
+		load_plugin(plugin)
+
+def load_archive(plugin):
+	archive_zip = zipfile.ZipFile(plugin)
+	archive_info = zipfile.ZipInfo(plugin)
+	hash_dir = hashlib.md5(str(archive_info)).hexdigest()
+	
+	archive_zip.extractall(tmp_dir + hash_dir)
+	print "\nThe archive as been unpacked in: " + tmp_dir + hash_dir
+	load_plugin(tmp_dir + hash_dir)
+	shutil.rmtree(tmp_dir + hash_dir)
+	print "\nThe temporary directory has been removed"
 
 def load_plugin(plugin):
 	if os.path.isfile(plugin):
-		print "\nAudit file: " + plugin + "\n"
+		print "\nAudit file: " + plugin
 		read = load_php(plugin)
 		auditing(read)
 	elif os.path.isdir(plugin):

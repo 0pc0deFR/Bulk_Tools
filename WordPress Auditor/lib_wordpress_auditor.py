@@ -7,6 +7,7 @@ import shutil
 
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
+ignored_extension = ['.jpg', '.png', '.gif'] #You can add your ignored extensions. Files with these extensions will not be audited.
 xss_detection_beta = True #The XSS detection is in beta and it is possible to have many false positives. You can disable XSS detection with False parameter
 # End Configuration
 
@@ -41,12 +42,13 @@ def load_archive(plugin):
 
 def load_plugin(plugin):
 	if os.path.isfile(plugin):
-		extension_not_supported = ['.jpg', '.png', '.gif']
 		i = 0
 		extension = os.path.splitext(plugin)
-		print "\nAudit file: " + plugin
-		read = load_php(plugin)
-		auditing(read)
+		global ignored_extension
+		if not extension[1] in ignored_extension:
+			print "\nAudit file: " + plugin
+			read = load_php(plugin)
+			auditing(read)
 	elif os.path.isdir(plugin):
 		for f in os.listdir(plugin):
 			if plugin[len(plugin)-1:] != "/":

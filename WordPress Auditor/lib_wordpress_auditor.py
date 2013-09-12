@@ -5,7 +5,13 @@ import zipfile
 import hashlib
 import shutil
 
-tmp_dir = "/tmp/"
+# Configuration
+tmp_dir = "/tmp/" #Example: /tmp/
+xss_detection_beta = True #The XSS detection is in beta and it is possible to have many false positives. You can disable XSS detection with False parameter
+# End Configuration
+
+#Don't modification
+uri = None
 
 def main():
 	if len(sys.argv) < 2:
@@ -19,6 +25,8 @@ def main():
 		load_archive(plugin)
 	else:
 		load_plugin(plugin)
+	if uri:
+		print "\n" + uri
 
 def load_archive(plugin):
 	archive_zip = zipfile.ZipFile(plugin)
@@ -33,6 +41,9 @@ def load_archive(plugin):
 
 def load_plugin(plugin):
 	if os.path.isfile(plugin):
+		extension_not_supported = ['.jpg', '.png', '.gif']
+		i = 0
+		extension = os.path.splitext(plugin)
 		print "\nAudit file: " + plugin
 		read = load_php(plugin)
 		auditing(read)
@@ -65,12 +76,33 @@ def csrf(content_file):
 				if content_file.find(strings_csrf[i], start, end) != -1:
 					csrf = 0
 				i += 1
+			i = 0
 		else:
 			break
 
 	if csrf == 1:
 		print "Your plugin is potentially vulnerable to CSRF. For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery"
+		
+def xss(content_file):
+	strings_xss = ["esc_html", "esc_js", "esc_textarea"]
+	start = end = i = 0
+	xss = None
+	while True:
+		start = content_file.find("echo", end)
+		end = content_file.find(";", start)
+		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
+			xss = 1
+			while i < len(strings_xss):
+				if content_file.find(strings_xss[i], start, end) != -1:
+					xss = 0
+				i += 1
+			i = 0
+		else:
+			break
 
+	if xss == 1:
+		print "Your plugin is potentially vulnerable to XSS. For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting"
+		
 def sqli(content_file):
 	strings_sqli = ["$wpdb->get_results","$wpdb->query"]
 	i = sqli = 0
@@ -84,4 +116,16 @@ def sqli(content_file):
 def auditing(content_file):
 	csrf(content_file)
 	sqli(content_file)
+	if xss_detection_beta == True:
+		xss(content_file)
+	uri_extract(content_file)
 	return 0
+
+def uri_extract(content_file):
+	string_uri = "Author URI:"
+	start = content_file.find(string_uri)
+	if start != -1:
+		end = content_file.find("\n", start)
+		global uri
+		uri = content_file[start:end]
+

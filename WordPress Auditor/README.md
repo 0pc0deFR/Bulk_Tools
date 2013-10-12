@@ -1,11 +1,14 @@
 # WordPress Auditor
 
 ## Changelog
-Version 2.3: Support format zip archive
-Version 2.2: Support multiple or single file
-Version 2.1: Multiple bug fixes and optimization in CSRF Detection
-Version 2.0: Add CSRF Detection
-Version 1.0: Creation, Support SQL Injection Detection
+Version 2.6: Add log option and optimization in XSS Detection  
+Version 2.5: Add "Ignored Extensions" and fix multiple bugs  
+Version 2.4: Add XSS Detection  
+Version 2.3: Support format zip archive  
+Version 2.2: Support multiple or single file  
+Version 2.1: Multiple bug fixes and optimization in CSRF Detection  
+Version 2.0: Add CSRF Detection  
+Version 1.0: Creation, Support SQL Injection Detection  
 
 ## How to use
 WordPress Auditor require Python 2.6 or Python 2.7: http://www.python.org/download/

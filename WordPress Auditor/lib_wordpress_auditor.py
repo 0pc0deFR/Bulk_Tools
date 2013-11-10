@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import sys
 import os
 import zipfile
@@ -11,21 +11,22 @@ import re
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
 log_dir = '/log/' #Example: /log/
-ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.css'] #You can add your ignored extensions. Files with these extensions will not be audited.
-xss_detection_beta = True #The XSS detection is in beta and it is possible to have many false positives. You can disable XSS detection with False parameter
+ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.pot', '.css'] #You can add your ignored extensions. Files with these extensions will not be audited.
 # End Configuration
 
 #Don't modification
 uri = None
+version = None
+plugin_name = None
 log = None
 log_filename = None
 
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
-		print sys.argv[0] + " file.php"
-		print sys.argv[0] + " pluginDir"
-		print sys.argv[0] + " archive.zip"
+		print sys.argv[0] + " file.php [--active-log]"
+		print sys.argv[0] + " pluginDir [--active-log]"
+		print sys.argv[0] + " archive.zip [--active-log]"
 		sys.exit()
 	plugin = sys.argv[1]
 	if len(sys.argv) == 3 and sys.argv[2] == "--active-log":
@@ -35,11 +36,15 @@ def main():
 		load_archive(plugin)
 	else:
 		load_plugin(plugin)
+	if plugin_name:
+		echo(plugin_name)
+	if version:
+		echo(version, '', '')
 	if uri:
-		echo(uri)
+		echo(uri, '', '')
 
 def version():
-	return "V2.6"
+	return "V2.7"
 
 def load_archive(plugin):
 	global log
@@ -131,6 +136,31 @@ def xss(content_file):
 						break
 		else:
 			break
+	while True:
+		start = content_file.find("echo ", end)
+		end = content_file.find("] ?>", start)
+		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
+			xss = 1
+			while i < len(strings_xss):
+				if content_file.find(strings_xss[i], start, end) != -1:
+					xss = 0
+				i += 1
+			if xss == 1:
+				i = start_var = end_var = 0
+				var = content_file[start+5:end]
+				while True:
+					start_var = content_file.find(var, end_var)
+					end_var = content_file.find('\n',start_var)
+					if start_var != -1 and end_var != -1:
+						while i < len(strings_xss):
+							if content_file.find(strings_xss[i], start_var, end_var) != -1:
+								xss = 0
+							i += 1
+						i = 0
+					else:
+						break
+		else:
+			break
 
 	if xss == 1:
 		echo("Your plugin is potentially vulnerable to XSS. For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting", '\r\n', '')
@@ -149,9 +179,10 @@ def sqli(content_file):
 def auditing(content_file):
 	csrf(content_file)
 	sqli(content_file)
-	if xss_detection_beta == True:
-		xss(content_file)
+	xss(content_file)
 	uri_extract(content_file)
+	version_extract(content_file)
+	plugin_name_extract(content_file)
 	return 0
 
 def uri_extract(content_file):
@@ -161,6 +192,22 @@ def uri_extract(content_file):
 		global uri
 		end = content_file.find("\n", start)
 		uri = content_file[start:end]
+
+def version_extract(content_file):
+	string_version = "Version:"
+	start = content_file.find(string_version)
+	if start != -1:
+		global version
+		end = content_file.find("\n", start)
+		version = content_file[start:end]
+
+def plugin_name_extract(content_file):
+	string_plugin_name = "Plugin Name:"
+	start = content_file.find(string_plugin_name)
+	if start != -1:
+		global plugin_name
+		end = content_file.find("\n", start)
+		plugin_name = content_file[start:end]
 
 def log_rand_name():
 	len_name = 15

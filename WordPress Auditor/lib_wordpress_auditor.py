@@ -44,10 +44,9 @@ def main():
 		echo(uri, '', '')
 
 def version():
-	return "V2.7"
+	return "V2.8"
 
 def load_archive(plugin):
-	global log
 	archive_zip = zipfile.ZipFile(plugin)
 	archive_info = zipfile.ZipInfo(plugin)
 	hash_dir = hashlib.md5(str(archive_info)).hexdigest()
@@ -60,7 +59,6 @@ def load_archive(plugin):
 	echo("The temporary directory has been removed")
 
 def load_plugin(plugin):
-	global log
 	if os.path.isfile(plugin):
 		i = 0
 		extension = os.path.splitext(plugin)
@@ -86,7 +84,6 @@ def load_php(plugin):
 		return reading
 
 def csrf(content_file):
-	global log
 	strings_csrf = ["wp_create_nonce", "wp_verify_nonce", "settings_fields", "wp_nonce_field"]
 	start = end = i = 0
 	csrf = None
@@ -107,7 +104,6 @@ def csrf(content_file):
 		echo("Your plugin is potentially vulnerable to CSRF. For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery", '\n\n', '')
 
 def xss(content_file):
-	global log
 	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "htmlspecialchars", "htmlentities"]
 	start = end = i = 0
 	xss = None
@@ -164,7 +160,7 @@ def xss(content_file):
 
 	if xss == 1:
 		echo("Your plugin is potentially vulnerable to XSS. For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting", '\r\n', '')
-		
+
 def sqli(content_file):
 	global log
 	strings_sqli = ["$wpdb->get_results","$wpdb->query"]
@@ -175,11 +171,31 @@ def sqli(content_file):
 		i += 1
 	if sqli == 1:
 		echo("Your plugin is potentially vulnerable to SQL Injection. For more informations: http://en.wikipedia.org/wiki/SQL_injection", '\r\n', '')
-		
+
+def file_include(content_file):
+	strings_file_include = ["include(", "include_once(", "require(", "require_once("]
+	i = start = end = 0
+	file_include = None
+	while i < len(strings_file_include):
+		while True:
+			start = content_file.find(strings_file_include[i], end)
+			end = content_file.find(");", start)
+			if start != -1 and end != -1:
+				if content_file.find("$_GET[", start, end) != -1 or content_file.find("$_POST[", start, end) != -1:
+					print content_file[start:end]
+					file_include = 1
+			else:
+				break
+		i += 1
+	if file_include == 1:
+		echo("Your plugin is potentially vulnerable to File Inclusion. For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability", '\r\n', '')
+
 def auditing(content_file):
 	csrf(content_file)
 	sqli(content_file)
 	xss(content_file)
+	file_include(content_file)
+	mail_function(content_file)
 	uri_extract(content_file)
 	version_extract(content_file)
 	plugin_name_extract(content_file)

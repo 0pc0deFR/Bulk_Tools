@@ -195,7 +195,6 @@ def auditing(content_file):
 	sqli(content_file)
 	xss(content_file)
 	file_include(content_file)
-	mail_function(content_file)
 	uri_extract(content_file)
 	version_extract(content_file)
 	plugin_name_extract(content_file)

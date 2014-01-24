@@ -1,6 +1,7 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.9: Fix bug  
 Version 2.8: Optimization in log function and add File Inclusion Detection  
 Version 2.7: Optimization in "Ignored Extensions" and add version/plugin_name extraction and fix bug in XSS Detection  
 Version 2.6: Add log option and optimization in XSS Detection  
@@ -53,3 +54,6 @@ wordpress_auditor.py archive.zip [--active-log]
 Wordpress Auditor detects the Wordpress API for safe SQL requests or GET/POST requests but if the API is not detected Wordpress Auditor indicate a potential vulnerability.
 Wordpress Auditor is developed to be versatile because if you use your own API you can add in "strings_csrf" or "string_xss" your API for GET/POST requests and replace content_file.find("$wpdb->prepare") by your API (only "$wpdb->prepare") for SQL requests.
 Wordpress Auditor detect multiple vulnerabilities: XSS, SQL Injection and CSRF to Wordpress plugin.
+
+##Online Tool
+http://0pc0defr.fr/wp-check/index.php

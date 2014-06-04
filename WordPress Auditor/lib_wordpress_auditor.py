@@ -6,7 +6,6 @@ import hashlib
 import shutil
 import string
 import random
-import re
 
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
@@ -20,18 +19,17 @@ version = None
 plugin_name = None
 log = None
 log_filename = None
+print_code = None
 
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
-		print sys.argv[0] + " file.php [--active-log]"
-		print sys.argv[0] + " pluginDir [--active-log]"
-		print sys.argv[0] + " archive.zip [--active-log]"
+		print sys.argv[0] + " file.php [--active-log] [--print-code]"
+		print sys.argv[0] + " pluginDir [--active-log] [--print-code]"
+		print sys.argv[0] + " archive.zip [--active-log] [--print-code]"
 		sys.exit()
 	plugin = sys.argv[1]
-	if len(sys.argv) == 3 and sys.argv[2] == "--active-log":
-		global log
-		log = 1
+	arguments(sys.argv)
 	if zipfile.is_zipfile(plugin):
 		load_archive(plugin)
 	else:
@@ -43,8 +41,18 @@ def main():
 	if uri:
 		echo(uri, '', '')
 
+def arguments(arguments):
+	for val in arguments:
+		if val == "--active-log":
+			global log
+			log = 1
+		elif val == "--print-code":
+			global print_code
+			print_code = 1
+	return 0
+
 def version():
-	return "V2.10"
+	return "V2.11"
 
 def load_archive(plugin):
 	archive_zip = zipfile.ZipFile(plugin)
@@ -96,11 +104,12 @@ def csrf(content_file):
 					csrf = csrf -1
 				i += 1
 			i = 0
+			echo_code(content_file[start:end+7], '\r\n', '')
 		else:
 			break
 
 	if csrf > 0:
-		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\n\n', '')
+		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\r\n', '')
 
 def xss(content_file):
 	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "wp_kses", "htmlspecialchars", "htmlentities"]
@@ -108,6 +117,8 @@ def xss(content_file):
 	while True:
 		start = content_file.find("echo ", end)
 		end = content_file.find(";", start)
+		if end > content_file.find("?>", start):
+			end = content_file.find("?>", start)
 		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
 			xss = xss +1
 			xss_found = 1
@@ -128,33 +139,7 @@ def xss(content_file):
 								xss = xss -1
 							i += 1
 						i = 0
-					else:
-						break
-		else:
-			break
-	while True:
-		start = content_file.find("echo ", end)
-		end = content_file.find("] ?>", start)
-		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
-			xss = xss +1
-			xss_found = 1
-			while i < len(strings_xss):
-				if content_file.find(strings_xss[i], start, end) != -1:
-					xss = xss -1
-					xss_found = 0
-				i += 1
-			if xss_found == 1:
-				i = start_var = end_var = 0
-				var = content_file[start+5:end]
-				while True:
-					start_var = content_file.find(var, end_var)
-					end_var = content_file.find('\n',start_var)
-					if start_var != -1 and end_var != -1:
-						while i < len(strings_xss):
-							if content_file.find(strings_xss[i], start_var, end_var) != -1:
-								xss = xss -1
-							i += 1
-						i = 0
+						echo_code(content_file[start:end], '\r\n', '')
 					else:
 						break
 		else:
@@ -170,7 +155,13 @@ def sqli(content_file):
 	while i < len(strings_sqli):
 		if content_file.find(strings_sqli[i]) != -1 and content_file.find("$wpdb->prepare") == -1:
 			sqli = sqli +1
+			start = content_file.find(strings_sqli[i])
+			end = content_file.find(";", start)
+			if end > content_file.find("?>", start):
+				end = content_file.find("?>", start)
+			echo_code(content_file[start:end], '\r\n', '')
 		i += 1
+
 	if sqli > 0:
 		echo("Your plugin is potentially vulnerable to SQL Injection with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/SQL_injection" % sqli, '\r\n', '')
 
@@ -183,11 +174,12 @@ def file_include(content_file):
 			end = content_file.find(");", start)
 			if start != -1 and end != -1:
 				if content_file.find("$_GET[", start, end) != -1 or content_file.find("$_POST[", start, end) != -1:
-					print content_file[start:end]
+					echo_code(content_file[start:end], '\r\n', '')
 					file_include = file_include +1
 			else:
 				break
 		i += 1
+
 	if file_include > 0:
 		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '')
 
@@ -199,7 +191,6 @@ def auditing(content_file):
 	uri_extract(content_file)
 	version_extract(content_file)
 	plugin_name_extract(content_file)
-	return 0
 
 def uri_extract(content_file):
 	string_uri = "Author URI:"
@@ -248,3 +239,8 @@ def echo(string, crlf = "\r\n", crlf_print = '\r\n'):
 		file_log_open = open(log_dir + log_filename, 'a+')
 		file_log_open.write(crlf + string)
 		file_log_open.close()
+
+def echo_code(string, crlf = '\r\n', crlf_print = '\r\n'):
+	global print_code
+	if print_code:
+		echo(string, crlf, crlf_print)

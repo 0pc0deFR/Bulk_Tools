@@ -1,6 +1,7 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.11: Add print-code function  
 Version 2.10: Add counters  
 Version 2.9: Fix bug  
 Version 2.8: Optimization in log function and add File Inclusion Detection  

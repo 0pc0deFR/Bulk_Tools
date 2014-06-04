@@ -1,6 +1,7 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.10: Add counters  
 Version 2.9: Fix bug  
 Version 2.8: Optimization in log function and add File Inclusion Detection  
 Version 2.7: Optimization in "Ignored Extensions" and add version/plugin_name extraction and fix bug in XSS Detection  

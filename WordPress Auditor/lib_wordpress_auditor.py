@@ -44,7 +44,7 @@ def main():
 		echo(uri, '', '')
 
 def version():
-	return "V2.8"
+	return "V2.10"
 
 def load_archive(plugin):
 	archive_zip = zipfile.ZipFile(plugin)

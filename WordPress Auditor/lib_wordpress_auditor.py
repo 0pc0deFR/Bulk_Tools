@@ -85,38 +85,38 @@ def load_php(plugin):
 
 def csrf(content_file):
 	strings_csrf = ["wp_create_nonce", "wp_verify_nonce", "settings_fields", "wp_nonce_field"]
-	start = end = i = 0
-	csrf = None
+	start = end = i = csrf = 0
 	while True:
 		start = content_file.find("<form", end)
 		end = content_file.find("</form>", start)
 		if start != -1 and end != -1:
-			csrf = 1
+			csrf = csrf +1
 			while i < len(strings_csrf):
 				if content_file.find(strings_csrf[i], start, end) != -1:
-					csrf = 0
+					csrf = csrf -1
 				i += 1
 			i = 0
 		else:
 			break
 
-	if csrf == 1:
-		echo("Your plugin is potentially vulnerable to CSRF. For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery", '\n\n', '')
+	if csrf > 0:
+		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\n\n', '')
 
 def xss(content_file):
-	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "htmlspecialchars", "htmlentities"]
-	start = end = i = 0
-	xss = None
+	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "wp_kses", "htmlspecialchars", "htmlentities"]
+	start = end = i = xss = xss_found = 0
 	while True:
 		start = content_file.find("echo ", end)
 		end = content_file.find(";", start)
 		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
-			xss = 1
+			xss = xss +1
+			xss_found = 1
 			while i < len(strings_xss):
 				if content_file.find(strings_xss[i], start, end) != -1:
-					xss = 0
+					xss = xss -1
+					xss_found = 0
 				i += 1
-			if xss == 1:
+			if xss_found == 1:
 				i = start_var = end_var = 0
 				var = content_file[start+5:end]
 				while True:
@@ -125,7 +125,7 @@ def xss(content_file):
 					if start_var != -1 and end_var != -1:
 						while i < len(strings_xss):
 							if content_file.find(strings_xss[i], start_var, end_var) != -1:
-								xss = 0
+								xss = xss -1
 							i += 1
 						i = 0
 					else:
@@ -136,12 +136,14 @@ def xss(content_file):
 		start = content_file.find("echo ", end)
 		end = content_file.find("] ?>", start)
 		if start != -1 and end != -1 and content_file.find("$", start, end) != -1:
-			xss = 1
+			xss = xss +1
+			xss_found = 1
 			while i < len(strings_xss):
 				if content_file.find(strings_xss[i], start, end) != -1:
-					xss = 0
+					xss = xss -1
+					xss_found = 0
 				i += 1
-			if xss == 1:
+			if xss_found == 1:
 				i = start_var = end_var = 0
 				var = content_file[start+5:end]
 				while True:
@@ -150,7 +152,7 @@ def xss(content_file):
 					if start_var != -1 and end_var != -1:
 						while i < len(strings_xss):
 							if content_file.find(strings_xss[i], start_var, end_var) != -1:
-								xss = 0
+								xss = xss -1
 							i += 1
 						i = 0
 					else:
@@ -158,8 +160,8 @@ def xss(content_file):
 		else:
 			break
 
-	if xss == 1:
-		echo("Your plugin is potentially vulnerable to XSS. For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting", '\r\n', '')
+	if xss > 0:
+		echo("Your plugin is potentially vulnerable to XSS with %s entrie(s). For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting" % xss, '\r\n', '')
 
 def sqli(content_file):
 	global log
@@ -167,15 +169,14 @@ def sqli(content_file):
 	i = sqli = 0
 	while i < len(strings_sqli):
 		if content_file.find(strings_sqli[i]) != -1 and content_file.find("$wpdb->prepare") == -1:
-			sqli = 1
+			sqli = sqli +1
 		i += 1
-	if sqli == 1:
-		echo("Your plugin is potentially vulnerable to SQL Injection. For more informations: http://en.wikipedia.org/wiki/SQL_injection", '\r\n', '')
+	if sqli > 0:
+		echo("Your plugin is potentially vulnerable to SQL Injection with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/SQL_injection" % sqli, '\r\n', '')
 
 def file_include(content_file):
 	strings_file_include = ["include(", "include_once(", "require(", "require_once("]
-	i = start = end = 0
-	file_include = None
+	i = start = end = file_include = 0
 	while i < len(strings_file_include):
 		while True:
 			start = content_file.find(strings_file_include[i], end)
@@ -183,12 +184,12 @@ def file_include(content_file):
 			if start != -1 and end != -1:
 				if content_file.find("$_GET[", start, end) != -1 or content_file.find("$_POST[", start, end) != -1:
 					print content_file[start:end]
-					file_include = 1
+					file_include = file_include +1
 			else:
 				break
 		i += 1
-	if file_include == 1:
-		echo("Your plugin is potentially vulnerable to File Inclusion. For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability", '\r\n', '')
+	if file_include > 0:
+		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '')
 
 def auditing(content_file):
 	csrf(content_file)

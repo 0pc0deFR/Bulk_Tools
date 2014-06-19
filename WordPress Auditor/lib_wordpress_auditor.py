@@ -6,6 +6,7 @@ import hashlib
 import shutil
 import string
 import random
+import platform
 
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
@@ -52,7 +53,7 @@ def arguments(arguments):
 	return 0
 
 def version():
-	return "V2.11"
+	return "V2.12"
 
 def load_archive(plugin):
 	archive_zip = zipfile.ZipFile(plugin)
@@ -109,7 +110,7 @@ def csrf(content_file):
 			break
 
 	if csrf > 0:
-		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\r\n', '')
+		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\r\n', '', "red")
 
 def xss(content_file):
 	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "wp_kses", "htmlspecialchars", "htmlentities"]
@@ -146,7 +147,7 @@ def xss(content_file):
 			break
 
 	if xss > 0:
-		echo("Your plugin is potentially vulnerable to XSS with %s entrie(s). For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting" % xss, '\r\n', '')
+		echo("Your plugin is potentially vulnerable to XSS with %s entrie(s). For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting" % xss, '\r\n', '', "red")
 
 def sqli(content_file):
 	global log
@@ -163,7 +164,7 @@ def sqli(content_file):
 		i += 1
 
 	if sqli > 0:
-		echo("Your plugin is potentially vulnerable to SQL Injection with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/SQL_injection" % sqli, '\r\n', '')
+		echo("Your plugin is potentially vulnerable to SQL Injection with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/SQL_injection" % sqli, '\r\n', '', "red")
 
 def file_include(content_file):
 	strings_file_include = ["include(", "include_once(", "require(", "require_once("]
@@ -181,13 +182,14 @@ def file_include(content_file):
 		i += 1
 
 	if file_include > 0:
-		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '')
+		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '', "red")
 
 def auditing(content_file):
 	csrf(content_file)
 	sqli(content_file)
 	xss(content_file)
 	file_include(content_file)
+	deprecated_php(content_file)
 	uri_extract(content_file)
 	version_extract(content_file)
 	plugin_name_extract(content_file)
@@ -225,9 +227,15 @@ def log_rand_name():
 		i = i + 1
 	return name
 
-def echo(string, crlf = "\r\n", crlf_print = '\r\n'):
+def echo(string, crlf = "\r\n", crlf_print = '\r\n', color_print = "default"):
 	global log_filename, log_dir, log
-	print crlf_print + string
+	if platform.system() == "Linux" and color_print != "default":
+		if color_print == "blue":
+			print crlf_print + "\033[94m" + string + "\033[0m"
+		elif color_print == "red":
+			print crlf_print + "\033[91m" + string + "\033[0m"
+	else:
+		print crlf_print + string
 	if log:
 		if not log_filename:
 			log_filename = log_rand_name() + '.txt'
@@ -244,3 +252,23 @@ def echo_code(string, crlf = '\r\n', crlf_print = '\r\n'):
 	global print_code
 	if print_code:
 		echo(string, crlf, crlf_print)
+
+def deprecated_php(content_file):
+	php5_3 = [["call_user_method(","call_user_func()"], ["call_user_method_array(", "call_user_func_array()"], ["define_syslog_variables(", "undefined function"], ["dl(", "undefined function"], ["ereg(", "preg_match()"], ["ereg_replace(", "preg_replace()"], ["eregi(", "preg_match()"], ["eregi_replace(", "preg_replace()"], ["set_magic_quotes_runtime(", "magic_quotes_runtime()"], ["session_register(", "undefined function"], ["session_unregister(", "undefined function"], ["session_is_registered(", "undefined function"], ["set_socket_blocking(", "stream_set_blocking()"], ["split(", "preg_split()"], ["spliti(", "preg_split()"], ["sql_regcase(", "undefined function"], ["mysql_db_query(", "mysql_select_db() and mysql_query()"], ["mysql_escape_string(", "mysql_real_escape_string()"]]
+	php5_4 = [["mcrypt_generic_end(", "undefined function"], ["mysql_list_dbs(", "undefined function"]]
+	php5_5 = [["setTimeZoneID(", "setTimeZone()"], ["datefmt_set_timezone_id(", "datefmt_set_timezone()"], ["mcrypt_cbc(", "undefined function"], ["mcrypt_cfb(", "undefined function"], ["mcrypt_ecb(", "undefined function"], ["mcrypt_ofb(", "undefined function"]]
+	i = 0
+	while i < len(php5_3):
+		if(content_file.find(php5_3[i][0]) != -1):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
+		i = i+1
+	i = 0
+	while i < len(php5_4):
+		if(content_file.find(php5_4[i][0]) != -1):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
+		i = i+1
+	i = 0
+	while i < len(php5_5):
+		if(content_file.find(php5_5[i][0]) != -1):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
+		i = i+1

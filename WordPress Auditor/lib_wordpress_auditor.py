@@ -21,6 +21,7 @@ plugin_name = None
 log = None
 log_filename = None
 print_code = None
+count_xss = count_sqli = count_csrf = count_fi = 0
 
 def main():
 	if len(sys.argv) < 2:
@@ -41,6 +42,11 @@ def main():
 		echo(version, '', '')
 	if uri:
 		echo(uri, '', '')
+	global count_xss, count_csrf, count_fi, count_sqli
+	echo("[+] %s XSS detected!" % count_xss, '')
+	echo("[+] %s CSRF detected!" % count_csrf, '', '')
+	echo("[+] %s File Include detected!" % count_fi, '', '')
+	echo("[+] %s SQL Injection detected!\r\n" % count_sqli, '', '')
 
 def arguments(arguments):
 	for val in arguments:
@@ -53,7 +59,7 @@ def arguments(arguments):
 	return 0
 
 def version():
-	return "V2.12"
+	return "V2.13"
 
 def load_archive(plugin):
 	archive_zip = zipfile.ZipFile(plugin)
@@ -110,10 +116,12 @@ def csrf(content_file):
 			break
 
 	if csrf > 0:
+		global count_csrf
+		count_csrf = count_csrf + csrf
 		echo("Your plugin is potentially vulnerable to CSRF with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/Cross-site_request_forgery" % csrf, '\r\n', '', "red")
 
 def xss(content_file):
-	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "wp_kses", "htmlspecialchars", "htmlentities"]
+	strings_xss = ["esc_html", "esc_js", "esc_textarea", "esc_attr", "wp_kses", "htmlspecialchars", "htmlentities", "json_encode"]
 	start = end = i = xss = xss_found = 0
 	while True:
 		start = content_file.find("echo ", end)
@@ -140,13 +148,18 @@ def xss(content_file):
 								xss = xss -1
 							i += 1
 						i = 0
-						echo_code(content_file[start:end], '\r\n', '')
+						if(is_xss(content_file, content_file[start:end]) == True):
+							xss = xss -1
+						else:
+							echo_code(content_file[start:end], '\r\n', '')
 					else:
 						break
 		else:
 			break
 
 	if xss > 0:
+		global count_xss
+		count_xss = count_xss + xss
 		echo("Your plugin is potentially vulnerable to XSS with %s entrie(s). For more informations: https://en.wikipedia.org/wiki/Cross-site_scripting" % xss, '\r\n', '', "red")
 
 def sqli(content_file):
@@ -164,6 +177,8 @@ def sqli(content_file):
 		i += 1
 
 	if sqli > 0:
+		global count_sqli
+		count_sqli = count_sqli + sqli
 		echo("Your plugin is potentially vulnerable to SQL Injection with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/SQL_injection" % sqli, '\r\n', '', "red")
 
 def file_include(content_file):
@@ -182,6 +197,8 @@ def file_include(content_file):
 		i += 1
 
 	if file_include > 0:
+		global count_fi
+		count_fi = count_fi + file_include
 		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '', "red")
 
 def auditing(content_file):
@@ -272,3 +289,13 @@ def deprecated_php(content_file):
 		if(content_file.find(php5_5[i][0]) != -1):
 			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
 		i = i+1
+
+def is_xss(content_file, vulnerable):
+	if(is_exception(content_file, vulnerable) == True):
+		return True
+
+def is_exception(content_file, vulnerable):
+	start = vulnerable.find("$")
+	end = vulnerable.find("->")
+	if(content_file.find("Exception " + vulnerable[start:end]) != -1):
+		return True

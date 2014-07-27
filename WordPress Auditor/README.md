@@ -1,6 +1,8 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.13: Add Exception verification in XSS Detection  
+Version 2.12: Add syntax coloration  
 Version 2.11: Add print-code function  
 Version 2.10: Add counters  
 Version 2.9: Fix bug  

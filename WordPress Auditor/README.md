@@ -1,6 +1,7 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.14: Fix bug in PHP deprecated functions detection  
 Version 2.13: Add Exception verification in XSS Detection  
 Version 2.12: Add syntax coloration  
 Version 2.11: Add print-code function  

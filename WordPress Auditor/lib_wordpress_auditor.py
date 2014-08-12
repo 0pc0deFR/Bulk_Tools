@@ -136,7 +136,7 @@ def xss(content_file):
 					xss = xss -1
 					xss_found = 0
 				i += 1
-			if xss_found == 1:
+			if xss_found == True:
 				i = start_var = end_var = 0
 				var = content_file[start+5:end]
 				while True:
@@ -146,14 +146,15 @@ def xss(content_file):
 						while i < len(strings_xss):
 							if content_file.find(strings_xss[i], start_var, end_var) != -1:
 								xss = xss -1
+								xss_found = False
 							i += 1
 						i = 0
-						if(is_xss(content_file, content_file[start:end]) == True):
-							xss = xss -1
-						else:
-							echo_code(content_file[start:end], '\r\n', '')
 					else:
 						break
+				if(is_xss(content_file, content_file[start:end]) == True):
+					xss = xss -1
+				elif xss_found == True:
+					echo_code(content_file[start:end], '\r\n', '')
 		else:
 			break
 
@@ -276,17 +277,17 @@ def deprecated_php(content_file):
 	php5_5 = [["setTimeZoneID(", "setTimeZone()"], ["datefmt_set_timezone_id(", "datefmt_set_timezone()"], ["mcrypt_cbc(", "undefined function"], ["mcrypt_cfb(", "undefined function"], ["mcrypt_ecb(", "undefined function"], ["mcrypt_ofb(", "undefined function"]]
 	i = 0
 	while i < len(php5_3):
-		if(content_file.find(php5_3[i][0]) != -1):
+		if(content_file.find(php5_3[i][0]) != -1 and content_file.find(php5_3[i][1][0:-1]) == -1):
 			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
 		i = i+1
 	i = 0
 	while i < len(php5_4):
-		if(content_file.find(php5_4[i][0]) != -1):
+		if(content_file.find(php5_4[i][0]) != -1 and content_file.find(php5_4[i][1][0:-1]) == -1):
 			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
 		i = i+1
 	i = 0
 	while i < len(php5_5):
-		if(content_file.find(php5_5[i][0]) != -1):
+		if(content_file.find(php5_5[i][0]) != -1 and content_file.find(php5_5[i][1][0:-1]) == -1):
 			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
 		i = i+1
 

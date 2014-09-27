@@ -1,6 +1,8 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.16: Add print-constuct function and add link in filename  
+Version 2.15: Fix another bug in PHP deprecated functions detection and add optional print detected classes  
 Version 2.14: Fix bug in PHP deprecated functions detection  
 Version 2.13: Add Exception verification in XSS Detection  
 Version 2.12: Add syntax coloration  
@@ -30,14 +32,14 @@ cd WORDPRESS_AUDITOR_DIRECTORY
 
 python wordpress_auditor.py
 
-Wordpress Auditor V2.7
+Wordpress Auditor V2.16
 Kevin Falcoz (aka 0pc0deFR)
 Twitter: @0pc0deFR - Mail: 0pc0deFR@gmail.com
 License GPL
 Example: 
-wordpress_auditor.py file.php [--active-log]
-wordpress_auditor.py pluginDir [--active-log]
-wordpress_auditor.py archive.zip [--active-log]
+wordpress_auditor.py file.php [--active-log] [--print-code] [--print-classes [--print-construct]]
+wordpress_auditor.py pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]]
+wordpress_auditor.py archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--no-remove-files]
 ```
 
 ### Windows
@@ -45,14 +47,14 @@ wordpress_auditor.py archive.zip [--active-log]
 cd WORDPRESS_AUDITOR_DIRECTORY
 python.exe wordpress_auditor.py
 
-Wordpress Auditor V2.7
+Wordpress Auditor V2.16
 Kevin Falcoz (aka 0pc0deFR)
 Twitter: @0pc0deFR - Mail: 0pc0deFR@gmail.com
 License GPL
 Example: 
-wordpress_auditor.py file.php [--active-log]
-wordpress_auditor.py pluginDir [--active-log]
-wordpress_auditor.py archive.zip [--active-log]
+wordpress_auditor.py file.php [--active-log] [--print-code] [--print-classes [--print-construct]]
+wordpress_auditor.py pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]]
+wordpress_auditor.py archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--no-remove-files]
 ```
 
 ## Support

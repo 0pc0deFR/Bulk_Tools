@@ -7,11 +7,12 @@ import shutil
 import string
 import random
 import platform
+import re
 
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
 log_dir = '/log/' #Example: /log/
-ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.pot', '.css'] #You can add your ignored extensions. Files with these extensions will not be audited.
+ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.pot', '.css', '.ttf'] #You can add your ignored extensions. Files with these extensions will not be audited.
 # End Configuration
 
 #Don't modification
@@ -21,14 +22,19 @@ plugin_name = None
 log = None
 log_filename = None
 print_code = None
+print_classes = None
+print_functions_in_class = None
+print_construct = None
+no_remove_files = None
+archive_zip = None
 count_xss = count_sqli = count_csrf = count_fi = 0
 
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
-		print sys.argv[0] + " file.php [--active-log] [--print-code]"
-		print sys.argv[0] + " pluginDir [--active-log] [--print-code]"
-		print sys.argv[0] + " archive.zip [--active-log] [--print-code]"
+		print sys.argv[0] + " file.php [--active-log] [--print-code] [--print-classes [--print-construct]]"
+		print sys.argv[0] + " pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]]"
+		print sys.argv[0] + " archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--no-remove-files]"
 		sys.exit()
 	plugin = sys.argv[1]
 	arguments(sys.argv)
@@ -56,12 +62,22 @@ def arguments(arguments):
 		elif val == "--print-code":
 			global print_code
 			print_code = 1
+		elif val == "--print-classes":
+			global print_classes
+			print_classes = 1
+		elif val == "--print-construct":
+			global print_construct
+			print_construct = 1
+		elif val == "--no-remove-files":
+			global no_remove_files
+			no_remove_files = 1
 	return 0
 
 def version():
-	return "V2.13"
+	return "V2.16"
 
 def load_archive(plugin):
+	global archive_zip
 	archive_zip = zipfile.ZipFile(plugin)
 	archive_info = zipfile.ZipInfo(plugin)
 	hash_dir = hashlib.md5(str(archive_info)).hexdigest()
@@ -70,16 +86,21 @@ def load_archive(plugin):
 		os.mkdir(tmp_dir)
 	echo("The archive as been unpacked in: " + tmp_dir + hash_dir)
 	load_plugin(tmp_dir + hash_dir)
-	shutil.rmtree(tmp_dir + hash_dir)
-	echo("The temporary directory has been removed")
+	global no_remove_files
+	if no_remove_files != True:
+		shutil.rmtree(tmp_dir + hash_dir)
+		echo("The temporary directory has been removed")
 
 def load_plugin(plugin):
 	if os.path.isfile(plugin):
 		i = 0
 		extension = os.path.splitext(plugin)
-		global ignored_extension
+		global ignored_extension, no_remove_files, archive_zip
 		if not extension[1] in ignored_extension:
-			echo("Audit file: " + plugin)
+			if no_remove_files == True or archive_zip == None:
+				echo("Audit file: file://" + plugin)
+			else:
+				echo("Audit file: " + plugin)
 			read = load_php(plugin)
 			auditing(read)
 	elif os.path.isdir(plugin):
@@ -96,7 +117,19 @@ def load_php(plugin):
 		open_file = open(plugin,'r')
 		reading = open_file.read()
 		open_file.close()
+		reading = remove_comment(reading)
 		return reading
+
+def remove_comment(content_file):
+	start_comments = ["//", "#"]
+	source_code = None
+	for start_comment in start_comments:
+		start = end = 0
+		while content_file.find(start_comment, start) != -1:
+			start = content_file.find(start_comment, start+1)
+			end = content_file.find('\n',start)
+			content_file = content_file.replace(content_file[start:end], "")
+	return content_file
 
 def csrf(content_file):
 	strings_csrf = ["wp_create_nonce", "wp_verify_nonce", "settings_fields", "wp_nonce_field"]
@@ -203,6 +236,7 @@ def file_include(content_file):
 		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '', "red")
 
 def auditing(content_file):
+	list_classes(content_file)
 	csrf(content_file)
 	sqli(content_file)
 	xss(content_file)
@@ -236,6 +270,71 @@ def plugin_name_extract(content_file):
 		end = content_file.find("\n", start)
 		plugin_name = content_file[start:end]
 
+def deprecated_php(content_file):
+	php5_3 = [["call_user_method(","call_user_func()"], ["call_user_method_array(", "call_user_func_array()"], ["define_syslog_variables(", "undefined function"], ["dl(", "undefined function"], ["ereg(", "preg_match()"], ["ereg_replace(", "preg_replace()"], ["eregi(", "preg_match()"], ["eregi_replace(", "preg_replace()"], ["set_magic_quotes_runtime(", "magic_quotes_runtime()"], ["session_register(", "undefined function"], ["session_unregister(", "undefined function"], ["session_is_registered(", "undefined function"], ["set_socket_blocking(", "stream_set_blocking()"], ["split(", "preg_split()"], ["spliti(", "preg_split()"], ["sql_regcase(", "undefined function"], ["mysql_db_query(", "mysql_select_db() and mysql_query()"], ["mysql_escape_string(", "mysql_real_escape_string()"]]
+	php5_4 = [["mcrypt_generic_end(", "undefined function"], ["mysql_list_dbs(", "undefined function"]]
+	php5_5 = [["setTimeZoneID(", "setTimeZone()"], ["datefmt_set_timezone_id(", "datefmt_set_timezone()"], ["mcrypt_cbc(", "undefined function"], ["mcrypt_cfb(", "undefined function"], ["mcrypt_ecb(", "undefined function"], ["mcrypt_ofb(", "undefined function"]]
+	filters_char = [" ", "("]
+	i = 0
+	while i < len(php5_3):
+		if(content_file.find(php5_3[i][0]) != -1 and content_file.find(php5_3[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_3[i][0])-1:content_file.find(php5_3[i][0])], filters_char) == True):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
+		i = i+1
+	i = 0
+	while i < len(php5_4):
+		if(content_file.find(php5_4[i][0]) != -1 and content_file.find(php5_4[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_4[i][0])-1:content_file.find(php5_4[i][0])], filters_char) == True):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
+		i = i+1
+	i = 0
+	while i < len(php5_5):
+		if(content_file.find(php5_5[i][0]) != -1 and content_file.find(php5_5[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_4[i][0])-1:content_file.find(php5_4[i][0])], filters_char) == True):
+			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
+		i = i+1
+
+def list_classes(content_file):
+	global print_classes
+	if print_classes != True:
+		return False
+	end = 0
+	filters_char = ["*/", "//", "#"]
+	while True:
+		start = content_file.find("class ", end)
+		end = content_file.find("{", start)
+		if(start != -1 and end != -1 and filter(content_file[start:end], filters_char) == False and re.match("^[a-zA-Z]",content_file[start+6:start+7])):
+			echo("The %s class was detected" % content_file[start+6:end].rstrip(), '', '', "blue")
+			construct_in_class(content_file, end)
+		else:
+			break
+
+def construct_in_class(content_file, starter):
+	global print_construct
+	if print_construct != True:
+		return False
+	start = content_file.find("function __construct(", starter)
+	end = content_file.find(")", start)
+	if start == -1:
+		echo("No constructor has been found", '', '', "blue")
+	else:
+		echo("The constructor of the class is %s" % content_file[start+9:end+1], '', '', "blue")
+
+def filter(character, filters_char):
+	for filter_char in filters_char:
+		if character == filter_char:
+			return True
+		elif character.find(filter_char) != -1:
+			return True
+	return False
+
+def is_xss(content_file, vulnerable):
+	if(is_exception(content_file, vulnerable) == True):
+		return True
+
+def is_exception(content_file, vulnerable):
+	start = vulnerable.find("$")
+	end = vulnerable.find("->")
+	if(content_file.find("Exception " + vulnerable[start:end]) != -1):
+		return True
+
 def log_rand_name():
 	len_name = 15
 	i = 0
@@ -249,11 +348,11 @@ def echo(string, crlf = "\r\n", crlf_print = '\r\n', color_print = "default"):
 	global log_filename, log_dir, log
 	if platform.system() == "Linux" and color_print != "default":
 		if color_print == "blue":
-			print crlf_print + "\033[94m" + string + "\033[0m"
+			print crlf_print + "\033[94m" + string.strip() + "\033[0m"
 		elif color_print == "red":
-			print crlf_print + "\033[91m" + string + "\033[0m"
+			print crlf_print + "\033[91m" + string.strip() + "\033[0m"
 	else:
-		print crlf_print + string
+		print crlf_print + string.strip()
 	if log:
 		if not log_filename:
 			log_filename = log_rand_name() + '.txt'
@@ -263,40 +362,10 @@ def echo(string, crlf = "\r\n", crlf_print = '\r\n', color_print = "default"):
 		if not os.path.isfile(log_dir + log_filename):
 			crlf = ''
 		file_log_open = open(log_dir + log_filename, 'a+')
-		file_log_open.write(crlf + string)
+		file_log_open.write(crlf + string.strip())
 		file_log_open.close()
 
 def echo_code(string, crlf = '\r\n', crlf_print = '\r\n'):
 	global print_code
 	if print_code:
 		echo(string, crlf, crlf_print)
-
-def deprecated_php(content_file):
-	php5_3 = [["call_user_method(","call_user_func()"], ["call_user_method_array(", "call_user_func_array()"], ["define_syslog_variables(", "undefined function"], ["dl(", "undefined function"], ["ereg(", "preg_match()"], ["ereg_replace(", "preg_replace()"], ["eregi(", "preg_match()"], ["eregi_replace(", "preg_replace()"], ["set_magic_quotes_runtime(", "magic_quotes_runtime()"], ["session_register(", "undefined function"], ["session_unregister(", "undefined function"], ["session_is_registered(", "undefined function"], ["set_socket_blocking(", "stream_set_blocking()"], ["split(", "preg_split()"], ["spliti(", "preg_split()"], ["sql_regcase(", "undefined function"], ["mysql_db_query(", "mysql_select_db() and mysql_query()"], ["mysql_escape_string(", "mysql_real_escape_string()"]]
-	php5_4 = [["mcrypt_generic_end(", "undefined function"], ["mysql_list_dbs(", "undefined function"]]
-	php5_5 = [["setTimeZoneID(", "setTimeZone()"], ["datefmt_set_timezone_id(", "datefmt_set_timezone()"], ["mcrypt_cbc(", "undefined function"], ["mcrypt_cfb(", "undefined function"], ["mcrypt_ecb(", "undefined function"], ["mcrypt_ofb(", "undefined function"]]
-	i = 0
-	while i < len(php5_3):
-		if(content_file.find(php5_3[i][0]) != -1 and content_file.find(php5_3[i][1][0:-1]) == -1):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
-		i = i+1
-	i = 0
-	while i < len(php5_4):
-		if(content_file.find(php5_4[i][0]) != -1 and content_file.find(php5_4[i][1][0:-1]) == -1):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
-		i = i+1
-	i = 0
-	while i < len(php5_5):
-		if(content_file.find(php5_5[i][0]) != -1 and content_file.find(php5_5[i][1][0:-1]) == -1):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
-		i = i+1
-
-def is_xss(content_file, vulnerable):
-	if(is_exception(content_file, vulnerable) == True):
-		return True
-
-def is_exception(content_file, vulnerable):
-	start = vulnerable.find("$")
-	end = vulnerable.find("->")
-	if(content_file.find("Exception " + vulnerable[start:end]) != -1):
-		return True

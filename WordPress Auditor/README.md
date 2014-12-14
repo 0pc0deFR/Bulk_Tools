@@ -1,6 +1,7 @@
 # WordPress Auditor
 
 ## Changelog
+Version 2.17: Improving the comments suppression function  
 Version 2.16: Add print-constuct function and add link in filename  
 Version 2.15: Fix another bug in PHP deprecated functions detection and add optional print detected classes  
 Version 2.14: Fix bug in PHP deprecated functions detection  

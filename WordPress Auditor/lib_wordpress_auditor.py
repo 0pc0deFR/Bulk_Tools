@@ -27,14 +27,15 @@ print_functions_in_class = None
 print_construct = None
 no_remove_files = None
 archive_zip = None
+print_user_entries = None
 count_xss = count_sqli = count_csrf = count_fi = 0
 
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
-		print sys.argv[0] + " file.php [--active-log] [--print-code] [--print-classes [--print-construct]]"
-		print sys.argv[0] + " pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]]"
-		print sys.argv[0] + " archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--no-remove-files]"
+		print sys.argv[0] + " file.php [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries]"
+		print sys.argv[0] + " pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries]"
+		print sys.argv[0] + " archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries] [--no-remove-files]"
 		sys.exit()
 	plugin = sys.argv[1]
 	arguments(sys.argv)
@@ -71,10 +72,13 @@ def arguments(arguments):
 		elif val == "--no-remove-files":
 			global no_remove_files
 			no_remove_files = 1
+		elif val == "--print-user-entries":
+			global print_user_entries
+			print_user_entries = 1
 	return 0
 
 def version():
-	return "V2.16"
+	return "V2.17"
 
 def load_archive(plugin):
 	global archive_zip
@@ -117,18 +121,19 @@ def load_php(plugin):
 		open_file = open(plugin,'r')
 		reading = open_file.read()
 		open_file.close()
+		uri_extract(reading)
+		version_extract(reading)
+		plugin_name_extract(reading)
 		reading = remove_comment(reading)
 		return reading
 
 def remove_comment(content_file):
-	start_comments = ["//", "#"]
-	source_code = None
-	for start_comment in start_comments:
-		start = end = 0
-		while content_file.find(start_comment, start) != -1:
-			start = content_file.find(start_comment, start+1)
-			end = content_file.find('\n',start)
-			content_file = content_file.replace(content_file[start:end], "")
+	regex = re.compile('(\\/)(\\*).*?(\\*)(\\/)',re.IGNORECASE|re.DOTALL)
+	content_file = re.sub(regex, "", content_file)
+	regex = re.compile('(\\/)(\\/).*?.\n', re.IGNORECASE|re.DOTALL)
+	content_file = re.sub(regex, "", content_file)
+	regex = re.compile('(#).*?.\n', re.IGNORECASE|re.DOTALL)
+	content_file = re.sub(regex, "", content_file)
 	return content_file
 
 def csrf(content_file):
@@ -242,9 +247,17 @@ def auditing(content_file):
 	xss(content_file)
 	file_include(content_file)
 	deprecated_php(content_file)
-	uri_extract(content_file)
-	version_extract(content_file)
-	plugin_name_extract(content_file)
+	user_entries(content_file)
+
+def user_entries(content_file):
+	global print_user_entries
+	if print_user_entries == True:
+		strings_user_entries = ["$_GET", "$_POST", "$_COOKIE", "$_REQUEST", "$_FILES"]
+		i = 0
+		while i < len(strings_user_entries):
+			if content_file.find(strings_user_entries[i]) != -1:
+				echo("%s are detected" % strings_user_entries[i], '', '', 'blue')
+			i +=1
 
 def uri_extract(content_file):
 	string_uri = "Author URI:"

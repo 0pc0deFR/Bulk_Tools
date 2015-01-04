@@ -28,7 +28,7 @@ print_construct = None
 no_remove_files = None
 archive_zip = None
 print_user_entries = None
-count_xss = count_sqli = count_csrf = count_fi = 0
+count_xss = count_sqli = count_csrf = count_fi = count_request = 0
 
 def main():
 	if len(sys.argv) < 2:
@@ -49,11 +49,12 @@ def main():
 		echo(version, '', '')
 	if uri:
 		echo(uri, '', '')
-	global count_xss, count_csrf, count_fi, count_sqli
+	global count_xss, count_csrf, count_fi, count_sqli, count_request
 	echo("[+] %s XSS detected!" % count_xss, '')
 	echo("[+] %s CSRF detected!" % count_csrf, '', '')
 	echo("[+] %s File Include detected!" % count_fi, '', '')
-	echo("[+] %s SQL Injection detected!\r\n" % count_sqli, '', '')
+	echo("[+] %s SQL Injection detected!" % count_sqli, '', '')
+	echo("[+] %s REQUEST detected!\r\n" % count_request, '', '')
 
 def arguments(arguments):
 	for val in arguments:
@@ -78,7 +79,7 @@ def arguments(arguments):
 	return 0
 
 def version():
-	return "V2.17"
+	return "V2.18"
 
 def load_archive(plugin):
 	global archive_zip
@@ -240,12 +241,30 @@ def file_include(content_file):
 		count_fi = count_fi + file_include
 		echo("Your plugin is potentially vulnerable to File Inclusion with %s entrie(s). For more informations: http://en.wikipedia.org/wiki/File_inclusion_vulnerability" % file_include, '\r\n', '', "red")
 
+def request(content_file):
+	request = start = end = 0
+	strings_request = ["$_REQUEST"]
+	for string_request in strings_request:
+		while True:
+			start = content_file.find(string_request, end)
+			end = start+1
+			if start != -1:
+				request = request +1
+			else:
+				break
+
+	if request > 0:
+		global count_request
+		count_request = count_request + request
+		echo("Your plugin is potentially vulnerable to Request with %s entrie(s). For more informations: http://php.net/manual/en/reserved.variables.request.php" % request, '\r\n', '', "red")
+
 def auditing(content_file):
 	list_classes(content_file)
 	csrf(content_file)
 	sqli(content_file)
 	xss(content_file)
 	file_include(content_file)
+	request(content_file)
 	deprecated_php(content_file)
 	user_entries(content_file)
 
@@ -254,9 +273,9 @@ def user_entries(content_file):
 	if print_user_entries == True:
 		strings_user_entries = ["$_GET", "$_POST", "$_COOKIE", "$_REQUEST", "$_FILES"]
 		i = 0
-		while i < len(strings_user_entries):
-			if content_file.find(strings_user_entries[i]) != -1:
-				echo("%s are detected" % strings_user_entries[i], '', '', 'blue')
+		for string_user_entries  in strings_user_entries:
+			if content_file.find(string_user_entries) != -1:
+				echo("%s are detected" % string_user_entries, '', '', 'blue')
 			i +=1
 
 def uri_extract(content_file):

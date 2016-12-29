@@ -12,12 +12,12 @@ import re
 # Configuration
 tmp_dir = "/tmp/" #Example: /tmp/
 log_dir = '/log/' #Example: /log/
-ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.pot', '.css', '.ttf'] #You can add your ignored extensions. Files with these extensions will not be audited.
+ignored_extension = ['.jpg', '.png', '.gif', '.txt', '.md', '.js', '.po', '.mo', '.pot', '.css', '.ttf', '.map', '.svg', '.eot', '.woff', '.woff2'] #You can add your ignored extensions. Files with these extensions will not be audited.
 # End Configuration
 
 #Don't modification
 uri = None
-version = None
+version_plugin = None
 plugin_name = None
 log = None
 log_filename = None
@@ -45,16 +45,16 @@ def main():
 		load_plugin(plugin)
 	if plugin_name:
 		echo(plugin_name)
-	if version:
-		echo(version, '', '')
+	if version_plugin:
+		echo(version_plugin, '', '')
 	if uri:
 		echo(uri, '', '')
 	global count_xss, count_csrf, count_fi, count_sqli, count_request
-	echo("[+] %s XSS detected!" % count_xss, '')
-	echo("[+] %s CSRF detected!" % count_csrf, '', '')
-	echo("[+] %s File Include detected!" % count_fi, '', '')
-	echo("[+] %s SQL Injection detected!" % count_sqli, '', '')
-	echo("[+] %s REQUEST detected!\r\n" % count_request, '', '')
+	echo("[+] %s possible XSS detected!" % count_xss, '', '\r\n', 'green')
+	echo("[+] %s possible CSRF detected!" % count_csrf, '', '', 'green')
+	echo("[+] %s possible File Include detected!" % count_fi, '', '', 'green')
+	echo("[+] %s possible SQL Injection detected!" % count_sqli, '', '', 'green')
+	echo("[+] %s possible REQUEST detected!\r\n" % count_request, '', '', 'green')
 
 def arguments(arguments):
 	for val in arguments:
@@ -101,7 +101,7 @@ def load_plugin(plugin):
 		i = 0
 		extension = os.path.splitext(plugin)
 		global ignored_extension, no_remove_files, archive_zip
-		if not extension[1] in ignored_extension:
+		if not extension[1] in ignored_extension and extension[1] != '':
 			if no_remove_files == True or archive_zip == None:
 				echo("Audit file: file://" + plugin)
 			else:
@@ -211,7 +211,9 @@ def sqli(content_file):
 			sqli = sqli +1
 			start = content_file.find(strings_sqli[i])
 			end = content_file.find(";", start)
-			if end > content_file.find("?>", start):
+			while end < content_file.find(")", start):
+				end = content_file.find(";", end+1)
+			if end > content_file.find("?>", start) and content_file.find("?>", start) != -1:
 				end = content_file.find("?>", start)
 			echo_code(content_file[start:end], '\r\n', '')
 		i += 1
@@ -310,17 +312,17 @@ def deprecated_php(content_file):
 	i = 0
 	while i < len(php5_3):
 		if(content_file.find(php5_3[i][0]) != -1 and content_file.find(php5_3[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_3[i][0])-1:content_file.find(php5_3[i][0])], filters_char) == True):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
+			echo("PHP optimization: You are using deprecated function: %s) is replaced by %s" % (php5_3[i][0], php5_3[i][1]), '\r\n', '', "blue")
 		i = i+1
 	i = 0
 	while i < len(php5_4):
 		if(content_file.find(php5_4[i][0]) != -1 and content_file.find(php5_4[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_4[i][0])-1:content_file.find(php5_4[i][0])], filters_char) == True):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
+			echo("PHP optimization: You are using deprecated function: %s) is replaced by %s" % (php5_4[i][0], php5_4[i][1]), '\r\n', '', "blue")
 		i = i+1
 	i = 0
 	while i < len(php5_5):
 		if(content_file.find(php5_5[i][0]) != -1 and content_file.find(php5_5[i][1][0:-1]) == -1 and filter(content_file[content_file.find(php5_4[i][0])-1:content_file.find(php5_4[i][0])], filters_char) == True):
-			echo("PHP optimization: You are using deprecated function: %s is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
+			echo("PHP optimization: You are using deprecated function: %s) is replaced by %s" % (php5_5[i][0], php5_5[i][1]), '\r\n', '', "blue")
 		i = i+1
 
 def list_classes(content_file):
@@ -383,8 +385,10 @@ def echo(string, crlf = "\r\n", crlf_print = '\r\n', color_print = "default"):
 			print crlf_print + "\033[94m" + string.strip() + "\033[0m"
 		elif color_print == "red":
 			print crlf_print + "\033[91m" + string.strip() + "\033[0m"
+		elif color_print == "green":
+			print crlf_print + "\033[93m" + string.strip() + "\033[0m"
 	else:
-		print crlf_print + string.strip()
+		print crlf_print + str(string).strip()
 	if log:
 		if not log_filename:
 			log_filename = log_rand_name() + '.txt'

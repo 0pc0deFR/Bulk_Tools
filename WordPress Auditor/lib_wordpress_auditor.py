@@ -83,7 +83,7 @@ def arguments(arguments):
 	return 0
 
 def version():
-	return "V2.18"
+	return "V2.19"
 
 def load_archive(plugin):
 	global archive_zip

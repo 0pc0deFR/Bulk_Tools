@@ -22,6 +22,7 @@ plugin_name = None
 log = None
 log_filename = None
 print_code = None
+print_code_type = None
 print_classes = None
 print_functions_in_class = None
 print_construct = None
@@ -33,9 +34,9 @@ count_xss = count_sqli = count_csrf = count_fi = count_request = 0
 def main():
 	if len(sys.argv) < 2:
 		print "Example: "
-		print sys.argv[0] + " file.php [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries]"
-		print sys.argv[0] + " pluginDir [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries]"
-		print sys.argv[0] + " archive.zip [--active-log] [--print-code] [--print-classes [--print-construct]] [--print-user-entries] [--no-remove-files]"
+		print sys.argv[0] + " file.php [--active-log] [--print-code [XSS,CSRF,FI,SQLI]] [--print-classes [--print-construct]] [--print-user-entries]"
+		print sys.argv[0] + " pluginDir [--active-log] [--print-code [XSS,CSRF,FI,SQLI]] [--print-classes [--print-construct]] [--print-user-entries]"
+		print sys.argv[0] + " archive.zip [--active-log] [--print-code [XSS,CSRF,FI,SQLI]] [--print-classes [--print-construct]] [--print-user-entries] [--no-remove-files]"
 		sys.exit()
 	plugin = sys.argv[1]
 	arguments(sys.argv)
@@ -64,6 +65,9 @@ def arguments(arguments):
 		elif val == "--print-code":
 			global print_code
 			print_code = 1
+			if len(arguments) > arguments.index('--print-code')+1 and  arguments[arguments.index('--print-code')+1] in ['XSS' ,'CSRF', 'FI', 'SQLI']:
+				global print_code_type
+				print_code_type = arguments[arguments.index('--print-code')+1]
 		elif val == "--print-classes":
 			global print_classes
 			print_classes = 1
@@ -150,7 +154,7 @@ def csrf(content_file):
 					csrf = csrf -1
 				i += 1
 			i = 0
-			echo_code(content_file[start:end+7], '\r\n', '')
+			echo_code(content_file[start:end+7], '\r\n', '', 'CSRF')
 		else:
 			break
 
@@ -193,7 +197,7 @@ def xss(content_file):
 				if(is_xss(content_file, content_file[start:end]) == True):
 					xss = xss -1
 				elif xss_found == True:
-					echo_code(content_file[start:end], '\r\n', '')
+					echo_code(content_file[start:end], '\r\n', '', 'XSS')
 		else:
 			break
 
@@ -215,7 +219,7 @@ def sqli(content_file):
 				end = content_file.find(";", end+1)
 			if end > content_file.find("?>", start) and content_file.find("?>", start) != -1:
 				end = content_file.find("?>", start)
-			echo_code(content_file[start:end], '\r\n', '')
+			echo_code(content_file[start:end], '\r\n', '', 'SQLI')
 		i += 1
 
 	if sqli > 0:
@@ -232,7 +236,7 @@ def file_include(content_file):
 			end = content_file.find(");", start)
 			if start != -1 and end != -1:
 				if content_file.find("$_GET[", start, end) != -1 or content_file.find("$_POST[", start, end) != -1:
-					echo_code(content_file[start:end], '\r\n', '')
+					echo_code(content_file[start:end], '\r\n', '', 'FI')
 					file_include = file_include +1
 			else:
 				break
@@ -401,7 +405,7 @@ def echo(string, crlf = "\r\n", crlf_print = '\r\n', color_print = "default"):
 		file_log_open.write(crlf + string.strip())
 		file_log_open.close()
 
-def echo_code(string, crlf = '\r\n', crlf_print = '\r\n'):
-	global print_code
-	if print_code:
+def echo_code(string, crlf = '\r\n', crlf_print = '\r\n', exploit_type = ''):
+	global print_code, print_code_type
+	if (print_code and print_code_type != None and print_code_type == exploit_type) or print_code and print_code_type == None :
 		echo(string, crlf, crlf_print)
